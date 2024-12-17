@@ -9,7 +9,7 @@ import os
 from argparse import ArgumentParser
 
 from src.data import OrigPlank, OrigPlank2, transform
-from src.models import ResNet50Regressor, ResNet50VAERegressor, ResNet18VAERegressor
+from src.models import ResNet50Regressor, ResNet50VAERegressor, ResNet18VAERegressor, ResNet18VAE
 from src.utils import MetricLogger, KLD
 
 parser = ArgumentParser(description = "Visual Foundation Model Training")
@@ -55,11 +55,11 @@ def train_one_epoch(
         optimizer.zero_grad()
         
         if args.vae_training:
-            _, outputs, mu, logvar = model(images)
+            outputs, mu, logvar = model(images)
         else:
             outputs, _ = model(images)
 
-        mse_loss = criterion(outputs, pos)
+        mse_loss = criterion(outputs, images)
         metric_logger.add("train_mse_loss", mse_loss.item())
         
         if args.vae_training:
@@ -126,11 +126,11 @@ def test(
             images, labels, pos = images.to(device).float(), labels.to(device), pos.to(device)
 
             if args.vae_training:
-                _, outputs, mu, logvar = model(images)
+                outputs, mu, logvar = model(images)
             else:
                 outputs, _ = model(images)
             
-            mse_loss = criterion(outputs, pos)
+            mse_loss = criterion(outputs, images)
             metric_logger.add("test_mse_loss", mse_loss.item())
 
             if args.vae_training:
@@ -192,17 +192,17 @@ def main():
         test_dataset, num_replicas=world_size, rank=rank, shuffle=False
     )
 
-    train_dataloader = DataLoader(train_dataset, batch_size=64, sampler=train_sampler)
-    test_dataloader = DataLoader(test_dataset, batch_size=64, sampler=test_sampler)
+    train_dataloader = DataLoader(train_dataset, batch_size=32, sampler=train_sampler)
+    test_dataloader = DataLoader(test_dataset, batch_size=32, sampler=test_sampler)
 
 
     if args.vae_training:
-        modelname = "resnet18vae_np_reg"
-        model = ResNet18VAERegressor(num_classes = 32).to(device)
+        modelname = "resnet18vae_np_recon"
+        model = ResNet18VAE().to(device)
     else:
-        modelname = "resnet18_np_reg"
+        modelname = "resnet18_np_recon"
         import ipdb; ipdb.set_trace()
-        model = ResNet18VAERegressor(num_classes = 32).to(device) 
+        model = ResNet18VAE().to(device) 
     
     model = nn.parallel.DistributedDataParallel(model, device_ids=[rank], find_unused_parameters=False)
 
@@ -211,7 +211,7 @@ def main():
 
     best_loss = float("inf")
     save_path = os.path.join("pretrained_models", modelname)
-    dataset_name = "og_planko_trajectory"
+    dataset_name = "board_reconstruction"
     os.makedirs(save_path, exist_ok=True)
     trial_number = str(len(os.listdir(save_path)))
     modelname = modelname + "_" + dataset_name + "_" + trial_number 

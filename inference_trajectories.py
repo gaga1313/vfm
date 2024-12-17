@@ -20,7 +20,7 @@ root_dir = "./trajectories"
 os.makedirs(root_dir, exist_ok = True)
 
 def test(model, dataloader, device='cuda', modelname = "resnet50vae_np_reg"):
-    os.makedirs(os.path.join(root_dir, modelname + "_latent_256"), exist_ok = True)
+    os.makedirs(os.path.join(root_dir, modelname + "_latent_128"), exist_ok = True)
     model.eval()
 
     progress_bar = tqdm(dataloader)
@@ -51,7 +51,7 @@ def test(model, dataloader, device='cuda', modelname = "resnet50vae_np_reg"):
                     # ax.plot(traj[:, 0], traj[:, 1], marker='o', markersize=3, color='blue', linewidth=1)
 
                 plt.axis('off')
-                plt.savefig(os.path.join(root_dir, modelname + "_latent_256", filename), bbox_inches='tight', pad_inches=0)
+                plt.savefig(os.path.join(root_dir, modelname + "_latent_128", filename), bbox_inches='tight', pad_inches=0)
                 plt.close(fig)
                 count += 1
 
@@ -65,8 +65,8 @@ def main():
     modelname = "resnet18vae_np_reg"
     model = ResNet18VAERegressor(num_classes=32, inference = True).to("cuda:0")
 
-    load_path = os.path.join("pretrained_models", modelname, "trial_3_best_model.pth")
-    modelname += "_trail_3_30"
+    load_path = os.path.join("pretrained_models", modelname, "trial_5_best_model.pth")
+    modelname += "_trail_5_30"
     model.load_state_dict(torch.load(load_path, map_location = "cuda:0"))
 
     # import ipdb; ipdb.set_trace()

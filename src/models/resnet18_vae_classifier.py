@@ -58,9 +58,9 @@ class ResNet18VAERegressor(nn.Module):
             nn.Linear(latent_dim, latent_dim // 2),
             nn.BatchNorm1d(latent_dim // 2),
             nn.ReLU(),
-            nn.Linear(latent_dim // 2, latent_dim // 2),
-            nn.BatchNorm1d(latent_dim // 2),
-            nn.ReLU(),
+            # nn.Linear(latent_dim // 2, latent_dim // 2),
+            # nn.BatchNorm1d(latent_dim // 2),
+            # nn.ReLU(),
             nn.Linear(latent_dim // 2, 32)
         )  # Decision layer
         self.inference = inference

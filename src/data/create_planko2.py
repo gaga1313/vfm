@@ -89,8 +89,8 @@ class OrigPlank2(Dataset):
                 self.file_list += [join(p, f) for f in scandir(p) if f.is_file()] #[:20000]
         else:
             self.file_list = [join(self.path, f) for f in scandir(self.path) if f.is_file()]
-        if not self.train:
-           self.file_list = sorted(self.file_list)
+        # if not self.train:
+        #    self.file_list = sorted(self.file_list)
         #print(self.file_list[:20])
         t1 = time.time()
         print("finished loading in ")
