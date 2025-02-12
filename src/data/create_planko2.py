@@ -4,10 +4,10 @@ import torch
 from os import listdir, scandir
 from os.path import isfile, join
 from PIL import Image
-import random
+# import random
 import dgread
 import numpy as np
-from tqdm import tqdm
+# from tqdm import tqdm
 # import cv2
 # from transforms import transform
 
@@ -133,14 +133,17 @@ class OrigPlank2(Dataset):
         # if self.cfg.write_inference_to_file:
         #     return img, [torch.tensor([x_pos, y_pos]), file_name.split('/')[-1]]
 
+        board_coordinates = np.hstack([world_desc['tx'], world_desc['ty'], world_desc['sx'], world_desc['sy'], world_desc['spin']])
+
         positions = []
         for i in range(16):
             positions.append(x_positions[i])
             positions.append(y_positions[i])
         positions = np.array(positions)
-        
-        return img, label, torch.tensor(positions)
 
+        
+        
+        return img, label, torch.tensor(positions), torch.tensor(board_coordinates)
     def __repr__(self) -> str:
         return f"MyDataset({self.name}, {self.path})"
 
@@ -151,12 +154,12 @@ class OrigPlank2(Dataset):
 
 #     progress_bar = tqdm(train_dataloader)
 
-#     for img, label, posx, posy in progress_bar:
-#         print(label)
-#         for i in range(32):
-#             cv2.imwrite(f"./trash/{i}.png", cv2.cvtColor(img[i].permute(1,2,0).numpy()*255, cv2.COLOR_RGB2BGR))
+#     for img, label, pos, board, world in progress_bar:
 #         import ipdb;ipdb.set_trace()
-
+#         # for i in range(32):
+#         #     cv2.imwrite(f"../../trash/{i}.png", cv2.cvtColor(img[i].permute(1,2,0).numpy()*255, cv2.COLOR_RGB2BGR))
+#         #     print('image_saved')
+#         # import ipdb;ipdb.set_trace()
 
     
     
