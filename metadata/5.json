@@ -1,1 +1,0 @@
-{"batch_size": 64, "trail_number": "5", "latent_dimension": 8, "learning rate": 0.001, "kld_coe(w2)": 0.01}

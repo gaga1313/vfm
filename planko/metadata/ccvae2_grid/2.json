@@ -1,0 +1,13 @@
+{
+    "batch_size": 32,
+    "trail_number": "2",
+    "latent_dimension": 4,
+    "learning rate": 0.001,
+    "kld_coe(w2)": 1.0,
+    "kld_std": 1.0,
+    "trajectory noise": false,
+    "trajectory normalization": false,
+    "loss function": "CCE",
+    "trainable_params": 112464648,
+    "is_vae_training": true
+}
