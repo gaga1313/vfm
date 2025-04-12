@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torchvision.models import resnet18
 
+
 # Custom Model with ResNet18 Encoder and VAE Reparameterization
 class ResNet18VAE(nn.Module):
     def __init__(self, latent_dim=64, input_channels=3, image_size=224):
@@ -32,7 +33,7 @@ class ResNet18VAE(nn.Module):
             nn.BatchNorm2d(32),
             nn.ReLU(True),
             nn.ConvTranspose2d(32, input_channels, kernel_size=4, stride=2, padding=1),
-            nn.Sigmoid()  # Output pixel values in [0, 1]
+            nn.Sigmoid(),  # Output pixel values in [0, 1]
         )
 
     def reparameterize(self, mu, logvar):
@@ -47,6 +48,8 @@ class ResNet18VAE(nn.Module):
         logvar = self.fc_logvar(features)  # Log variance
         z = self.reparameterize(mu, logvar)  # New latent vector
         reconstructed_image = self.decoder(z)  # Generate image
-        return reconstructed_image, mu, logvar  # Output reconstructed image and latent parameters
-
-
+        return (
+            reconstructed_image,
+            mu,
+            logvar,
+        )  # Output reconstructed image and latent parameters

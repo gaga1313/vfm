@@ -16,6 +16,7 @@ import torchvision
 
 # Custom Model with ResNet50 Encoder and VAE Reparameterization
 
+
 class CVAE(nn.Module):
     def __init__(self, board_dim, trajectory_dim, latent_dim):
         super(CVAE, self).__init__()
@@ -35,9 +36,9 @@ class CVAE(nn.Module):
             nn.Linear(512, 512),
             nn.ReLU(),
             nn.Linear(512, 256),
-            nn.ReLU()
+            nn.ReLU(),
         )
-        
+
         self.fc_mu = nn.Linear(256, latent_dim)  # Mean vector
         self.fc_logvar = nn.Linear(256, latent_dim)  # Log variance vector
 
@@ -81,21 +82,30 @@ class CVAE(nn.Module):
         decoded = self.decoder_fc(decoder_input)
 
         # Pass through each head
-        outputs = torch.stack([head(decoded) for head in self.heads], dim=1)  # Shape: (batch_size, 16, 896)
+        outputs = torch.stack(
+            [head(decoded) for head in self.heads], dim=1
+        )  # Shape: (batch_size, 16, 896)
 
         return outputs, mu, logvar
-    
+
     def inference(self, image_vector, n_samples=100):
         """Generates n_samples new trajectories conditioned on board coordinates."""
         n_batch = image_vector.shape[0]
-        image_vector = image_vector.repeat(n_samples, 1)  # Repeat across batch dimension
-        z = torch.randn(n_batch * n_samples, self.latent_dim).to(image_vector.device)  # Sample latent vectors
-        decoder_input = torch.cat((z, image_vector), dim=1)  # Concatenate latent vectors with board coordinates
+        image_vector = image_vector.repeat(
+            n_samples, 1
+        )  # Repeat across batch dimension
+        z = torch.randn(n_batch * n_samples, self.latent_dim).to(
+            image_vector.device
+        )  # Sample latent vectors
+        decoder_input = torch.cat(
+            (z, image_vector), dim=1
+        )  # Concatenate latent vectors with board coordinates
         decoded = self.decoder_fc(decoder_input)  # Generate trajectories
-        generated_trajectories = torch.stack([head(decoded) for head in self.heads], dim=1)
-        generated_trajectories = torch.argmax(generated_trajectories, dim=-1) 
-        return generated_trajectories.view(n_batch, n_samples, 16) 
-    
+        generated_trajectories = torch.stack(
+            [head(decoded) for head in self.heads], dim=1
+        )
+        generated_trajectories = torch.argmax(generated_trajectories, dim=-1)
+        return generated_trajectories.view(n_batch, n_samples, 16)
 
 
 class CConvVAE(nn.Module):
@@ -111,18 +121,15 @@ class CConvVAE(nn.Module):
             nn.Conv2d(image_channels, 32, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
-            
             nn.Conv2d(32, 64, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
-            
             nn.Conv2d(64, 128, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
-
             nn.Flatten(),
             nn.Linear(128 * (image_size // 8) * (image_size // 8), 512),
-            nn.ReLU()
+            nn.ReLU(),
         )
 
         self.encoder_fc = nn.Sequential(
@@ -135,9 +142,9 @@ class CConvVAE(nn.Module):
             nn.Linear(512, 512),
             nn.ReLU(),
             nn.Linear(512, 256),
-            nn.ReLU()
+            nn.ReLU(),
         )
-        
+
         self.fc_mu = nn.Linear(256, latent_dim)  # Mean vector
         self.fc_logvar = nn.Linear(256, latent_dim)  # Log variance vector
 
@@ -145,18 +152,15 @@ class CConvVAE(nn.Module):
             nn.Conv2d(image_channels, 32, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
-            
             nn.Conv2d(32, 64, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
-            
             nn.Conv2d(64, 128, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
-
             nn.Flatten(),
             nn.Linear(128 * (image_size // 8) * (image_size // 8), 512),
-            nn.ReLU()
+            nn.ReLU(),
         )
 
         # Decoder
@@ -201,31 +205,40 @@ class CConvVAE(nn.Module):
         decoded = self.decoder_fc(decoder_input)
 
         # Pass through each head
-        outputs = torch.stack([head(decoded) for head in self.heads], dim=1)  # Shape: (batch_size, 16, 896)
+        outputs = torch.stack(
+            [head(decoded) for head in self.heads], dim=1
+        )  # Shape: (batch_size, 16, 896)
 
         return outputs, mu, logvar
-    
+
     def inference(self, image, n_samples=100):
         """Generates n_samples new trajectories conditioned on board coordinates."""
         n_batch = image.shape[0]
-        image = image.repeat_interleave(n_samples, dim=0)  # Expands batch size instead of using repeat
-    
+        image = image.repeat_interleave(
+            n_samples, dim=0
+        )  # Expands batch size instead of using repeat
+
         # Sample latent vectors
-        z = torch.randn(n_batch * n_samples, self.latent_dim).to(image.device)  
+        z = torch.randn(n_batch * n_samples, self.latent_dim).to(image.device)
 
         # Encode image
-        image_vector = self.image_encoder2(image)  # Ensure image_encoder2 can handle this shape
+        image_vector = self.image_encoder2(
+            image
+        )  # Ensure image_encoder2 can handle this shape
 
         # Concatenate latent vector with encoded image
-        decoder_input = torch.cat((image_vector, z), dim=1)  
-        
+        decoder_input = torch.cat((image_vector, z), dim=1)
+
         # Generate trajectories
-        decoded = self.decoder_fc(decoder_input)  
-        generated_trajectories = torch.stack([head(decoded) for head in self.heads], dim=1)
-        
+        decoded = self.decoder_fc(decoder_input)
+        generated_trajectories = torch.stack(
+            [head(decoded) for head in self.heads], dim=1
+        )
+
         # Convert to indices using argmax
-        generated_trajectories = torch.argmax(generated_trajectories, dim=-1)  
-        return generated_trajectories.view(n_batch, n_samples, 16) 
+        generated_trajectories = torch.argmax(generated_trajectories, dim=-1)
+        return generated_trajectories.view(n_batch, n_samples, 16)
+
 
 class CConvVAE2(nn.Module):
     def __init__(self, image_channels, image_size, trajectory_dim, latent_dim):
@@ -240,18 +253,15 @@ class CConvVAE2(nn.Module):
             nn.Conv2d(image_channels, 32, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
-            
             nn.Conv2d(32, 64, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
-            
             nn.Conv2d(64, 128, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
-
             nn.Flatten(),
             nn.Linear(128 * (image_size // 8) * (image_size // 8), 512),
-            nn.ReLU()
+            nn.ReLU(),
         )
 
         self.encoder_fc = nn.Sequential(
@@ -264,9 +274,9 @@ class CConvVAE2(nn.Module):
             nn.Linear(512, 512),
             nn.ReLU(),
             nn.Linear(512, 256),
-            nn.ReLU()
+            nn.ReLU(),
         )
-        
+
         self.fc_mu = nn.Linear(256, latent_dim)  # Mean vector
         self.fc_logvar = nn.Linear(256, latent_dim)  # Log variance vector
 
@@ -274,18 +284,15 @@ class CConvVAE2(nn.Module):
             nn.Conv2d(image_channels, 32, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
-            
             nn.Conv2d(32, 64, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
-            
             nn.Conv2d(64, 128, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
-
             nn.Flatten(),
             nn.Linear(128 * (image_size // 8) * (image_size // 8), 512),
-            nn.ReLU()
+            nn.ReLU(),
         )
 
         # Decoder
@@ -304,7 +311,7 @@ class CConvVAE2(nn.Module):
 
         # 16 heads, each outputting a 896-dimensional vector
         self.heads = nn.ModuleList([nn.Linear(1024, 100) for _ in range(32)])
-       
+
     def reparameterize(self, mu, logvar):
         """Reparameterization trick to sample z ~ N(mu, sigma^2)."""
         std = torch.exp(0.5 * logvar)
@@ -329,10 +336,10 @@ class CConvVAE2(nn.Module):
     #     decoded = self.decoder_fc(decoder_input)
     #     # Pass through each head
     #     outputs = torch.stack([head(decoded) for head in self.heads], dim=1)  # Shape: (batch_size, 16, 896)
-        
+
     #     return outputs, mu, logvar
-    
-    #captum forward
+
+    # captum forward
     def forward(self, image):
         # Combine image vector and trajectory vector as input to the encoder
         z = torch.normal(mean=0, std=2, size=(32, self.latent_dim)).to(image.device)
@@ -341,52 +348,66 @@ class CConvVAE2(nn.Module):
         decoder_input = torch.cat((image_vector2, z), dim=1)
         decoded = self.decoder_fc(decoder_input)
         # Pass through each head
-        outputs = torch.stack([head(decoded) for head in self.heads], dim=1)  # Shape: (batch_size, 16, 896)
-        
+        outputs = torch.stack(
+            [head(decoded) for head in self.heads], dim=1
+        )  # Shape: (batch_size, 16, 896)
+
         return outputs
 
-    
     def inference(self, image, n_samples=100):
         """Generates n_samples new trajectories conditioned on board coordinates."""
         n_batch = image.shape[0]
-        image = image.repeat_interleave(n_samples, dim=0)  # Expands batch size instead of using repeat
-    
+        image = image.repeat_interleave(
+            n_samples, dim=0
+        )  # Expands batch size instead of using repeat
+
         # Sample latent vectors
-        z = torch.normal(mean=0, std=1, size=(n_batch * n_samples, self.latent_dim)).to(image.device)
+        z = torch.normal(mean=0, std=1, size=(n_batch * n_samples, self.latent_dim)).to(
+            image.device
+        )
 
         # Encode image
-        image_vector = self.image_encoder2(image)  # Ensure image_encoder2 can handle this shape
+        image_vector = self.image_encoder2(
+            image
+        )  # Ensure image_encoder2 can handle this shape
 
         # Concatenate latent vector with encoded image
-        decoder_input = torch.cat((image_vector, z), dim=1)  
-        
+        decoder_input = torch.cat((image_vector, z), dim=1)
+
         # Generate trajectories
-        decoded = self.decoder_fc(decoder_input)  
-        generated_trajectories = torch.stack([head(decoded) for head in self.heads], dim=1)
-        
+        decoded = self.decoder_fc(decoder_input)
+        generated_trajectories = torch.stack(
+            [head(decoded) for head in self.heads], dim=1
+        )
+
         # Convert to indices using argmax
-        generated_trajectories = torch.argmax(generated_trajectories, dim=-1)  
-        return generated_trajectories.view(n_batch, n_samples, 32) 
-    
+        generated_trajectories = torch.argmax(generated_trajectories, dim=-1)
+        return generated_trajectories.view(n_batch, n_samples, 32)
+
     def inference2(self, image, n_samples=1000, chunk_size=10):
-        """Generates n_samples new trajectories while keeping computations on GPU 
+        """Generates n_samples new trajectories while keeping computations on GPU
         and saving outputs on CPU to manage memory usage efficiently."""
-        
+
         n_batch = image.shape[0]
         device = image.device  # Keep operations on the same device as the model
-        
+
         all_generated_trajectories = []
-        
+
         with torch.no_grad():
             for start in range(0, n_samples, chunk_size):
                 end = min(start + chunk_size, n_samples)
                 curr_n_samples = end - start  # Number of samples in this chunk
-                
+
                 # Expand batch size (stays on GPU)
                 image_chunk = image.repeat_interleave(curr_n_samples, dim=0)
-                
+
                 # Sample latent vectors (on GPU)
-                z = torch.normal(mean=0, std=1, size=(n_batch * curr_n_samples, self.latent_dim), device=device)
+                z = torch.normal(
+                    mean=0,
+                    std=1,
+                    size=(n_batch * curr_n_samples, self.latent_dim),
+                    device=device,
+                )
 
                 # Encode image (on GPU)
                 image_vector = self.image_encoder2(image_chunk)
@@ -396,15 +417,17 @@ class CConvVAE2(nn.Module):
 
                 # Generate trajectories (on GPU)
                 decoded = self.decoder_fc(decoder_input)
-                generated_trajectories = torch.stack([head(decoded) for head in self.heads], dim=1)
-                
+                generated_trajectories = torch.stack(
+                    [head(decoded) for head in self.heads], dim=1
+                )
+
                 # Convert to indices using argmax (on GPU)
                 generated_trajectories = torch.argmax(generated_trajectories, dim=-1)
-                
+
                 # Move result to CPU to save GPU memory
-                all_generated_trajectories.append(generated_trajectories.view(n_batch, curr_n_samples, 32).cpu())
+                all_generated_trajectories.append(
+                    generated_trajectories.view(n_batch, curr_n_samples, 32).cpu()
+                )
 
         # Concatenate final output on CPU
         return torch.cat(all_generated_trajectories, dim=1)
-
-

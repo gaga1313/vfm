@@ -12,9 +12,11 @@ from src.data import OrigPlank, OrigPlank2, transform
 from src.models import ResNet50Classifier, ResNet50VAEClassifier
 from src.utils import MetricLogger, kld
 
-parser = ArgumentParser(description = "Visual Foundation Model Training")
-parser.add_argument("--vae_training", action = "store_true", default = False, help = "training strategy")
-parser.add_argument("--w2", default = 1e-5, help = "KLD loss weight")
+parser = ArgumentParser(description="Visual Foundation Model Training")
+parser.add_argument(
+    "--vae_training", action="store_true", default=False, help="training strategy"
+)
+parser.add_argument("--w2", default=1e-5, help="KLD loss weight")
 
 
 def setup():
@@ -26,14 +28,17 @@ def setup():
 def cleanup():
     dist.destroy_process_group()
 
+
 def unwrap_model(model):
-    if hasattr(model, 'module'):
+    if hasattr(model, "module"):
         return unwrap_model(model.module)
     return model
 
+
 # Training function with a progress bar
 def train_one_epoch(
-    args, model,
+    args,
+    model,
     dataloader,
     criterion,
     optimizer,
@@ -50,9 +55,9 @@ def train_one_epoch(
 
     for step, (images, labels) in enumerate(progress_bar):
         images, labels = images.to(device).float(), labels.to(device)
-        
+
         optimizer.zero_grad()
-        
+
         if args.vae_training:
             _, outputs, mu, logvar = model(images)
         else:
@@ -61,7 +66,7 @@ def train_one_epoch(
         loss = criterion(outputs, labels)
         running_loss += loss.item()
         batch_loss = loss.item()
-        
+
         if args.vae_training:
             loss_kld = args.w2 * kld(mu, logvar)
             final_loss = loss + loss_kld
@@ -70,7 +75,7 @@ def train_one_epoch(
             batch_loss += loss_kld.item()
         else:
             loss.backward()
-        
+
         optimizer.step()
 
         _, predicted = torch.max(outputs, 1)
@@ -93,13 +98,16 @@ def train_one_epoch(
             )
         if args.vae_training:
             progress_bar.set_postfix(
-                {"Train Loss": batch_loss, "Train KLD": loss_kld.item(), "Train Accuracy": batch_accuracy}
+                {
+                    "Train Loss": batch_loss,
+                    "Train KLD": loss_kld.item(),
+                    "Train Accuracy": batch_accuracy,
+                }
             )
         else:
             progress_bar.set_postfix(
                 {"Train Loss": batch_loss, "Train Accuracy": batch_accuracy}
             )
-
 
     avg_loss = metric_logger.average("train_loss")
     accuracy = metric_logger.average("train_accuracy")
@@ -107,15 +115,15 @@ def train_one_epoch(
 
 
 def test(
-    args, 
-    model, 
-    dataloader, 
-    criterion, 
-    metric_logger, 
-    epoch, 
-    epochs, 
-    device="cuda", 
-    rank=0
+    args,
+    model,
+    dataloader,
+    criterion,
+    metric_logger,
+    epoch,
+    epochs,
+    device="cuda",
+    rank=0,
 ):
     model.eval()
     total = correct = 0.0
@@ -129,7 +137,7 @@ def test(
                 _, outputs, mu, logvar = model(images)
             else:
                 outputs, _ = model(images)
-            
+
             loss = criterion(outputs, labels)
             batch_loss = loss.item()
             # running_loss += loss.item()
@@ -153,7 +161,11 @@ def test(
 
             if args.vae_training:
                 progress_bar.set_postfix(
-                    {"Test Loss": batch_loss,  "Test KLD": loss_kld.item(), "Test Accuracy": batch_accuracy}
+                    {
+                        "Test Loss": batch_loss,
+                        "Test KLD": loss_kld.item(),
+                        "Test Accuracy": batch_accuracy,
+                    }
                 )
             else:
                 progress_bar.set_postfix(
@@ -185,8 +197,16 @@ def main():
     # train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 
     # shifted to new data
-    train_dataset = OrigPlank2("/cifs/data/tserre_lrs/projects/projects/prj_vis_sim/plankdatasets/originalv1/train", train = True, transform = transform)
-    test_dataset = OrigPlank2("/cifs/data/tserre_lrs/projects/projects/prj_vis_sim/plankdatasets/originalv1/test", train = False, transform = transform)
+    train_dataset = OrigPlank2(
+        "/cifs/data/tserre_lrs/projects/projects/prj_vis_sim/plankdatasets/originalv1/train",
+        train=True,
+        transform=transform,
+    )
+    test_dataset = OrigPlank2(
+        "/cifs/data/tserre_lrs/projects/projects/prj_vis_sim/plankdatasets/originalv1/test",
+        train=False,
+        transform=transform,
+    )
 
     train_sampler = DistributedSampler(
         train_dataset, num_replicas=world_size, rank=rank, shuffle=True
@@ -198,15 +218,16 @@ def main():
     train_dataloader = DataLoader(train_dataset, batch_size=32, sampler=train_sampler)
     test_dataloader = DataLoader(test_dataset, batch_size=32, sampler=test_sampler)
 
-
     if args.vae_training:
         modelname = "resnet50vae_np_cls"
-        model = ResNet50VAEClassifier(num_classes = 2).to(device)
+        model = ResNet50VAEClassifier(num_classes=2).to(device)
     else:
         modelname = "resnet50_np_cls"
-        model = ResNet50Classifier(num_classes = 2).to(device)
-    
-    model = nn.parallel.DistributedDataParallel(model, device_ids=[rank], find_unused_parameters=False)
+        model = ResNet50Classifier(num_classes=2).to(device)
+
+    model = nn.parallel.DistributedDataParallel(
+        model, device_ids=[rank], find_unused_parameters=False
+    )
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
@@ -216,7 +237,7 @@ def main():
     dataset_name = "og_planko"
     os.makedirs(save_path, exist_ok=True)
     trial_number = str(len(os.listdir(save_path)))
-    modelname = modelname + "_" + dataset_name + "_" + trial_number 
+    modelname = modelname + "_" + dataset_name + "_" + trial_number
 
     if rank == 0:
         print(f"Total Train Images: {len(train_dataset)}")
@@ -256,8 +277,8 @@ def main():
             device,
             rank=rank,
         )
-        
-        if rank == 0 and  test_acc > best_accuracy:
+
+        if rank == 0 and test_acc > best_accuracy:
             best_accuracy = test_acc
             torch.save(
                 unwrap_model(model).state_dict(),

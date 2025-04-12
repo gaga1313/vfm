@@ -16,6 +16,7 @@ import torchvision
 
 # Custom Model with ResNet50 Encoder and VAE Reparameterization
 
+
 class ConditionalVAE(nn.Module):
     def __init__(self, board_dim, trajectory_dim, latent_dim):
         super(ConditionalVAE, self).__init__()
@@ -35,9 +36,9 @@ class ConditionalVAE(nn.Module):
             nn.Linear(256, 128),
             nn.ReLU(),
             nn.Linear(128, 64),
-            nn.ReLU()
+            nn.ReLU(),
         )
-        
+
         self.fc_mu = nn.Linear(64, latent_dim)  # Mean vector
         self.fc_logvar = nn.Linear(64, latent_dim)  # Log variance vector
 
@@ -77,12 +78,18 @@ class ConditionalVAE(nn.Module):
         reconstructed_trajectory = self.decoder_fc(decoder_input)
 
         return reconstructed_trajectory, mu, logvar
-    
+
     def inference(self, image_vector, n_samples=100):
         """Generates n_samples new trajectories conditioned on board coordinates."""
         n_batch = image_vector.shape[0]
-        image_vector = image_vector.repeat(n_samples, 1)  # Repeat across batch dimension
-        z = torch.randn(n_batch * n_samples, self.latent_dim).to(image_vector.device)  # Sample latent vectors
-        decoder_input = torch.cat((z, image_vector), dim=1)  # Concatenate latent vectors with board coordinates
+        image_vector = image_vector.repeat(
+            n_samples, 1
+        )  # Repeat across batch dimension
+        z = torch.randn(n_batch * n_samples, self.latent_dim).to(
+            image_vector.device
+        )  # Sample latent vectors
+        decoder_input = torch.cat(
+            (z, image_vector), dim=1
+        )  # Concatenate latent vectors with board coordinates
         generated_trajectories = self.decoder_fc(decoder_input)  # Generate trajectories
-        return generated_trajectories.view(n_batch, n_samples, self.trajectory_dim) 
+        return generated_trajectories.view(n_batch, n_samples, self.trajectory_dim)

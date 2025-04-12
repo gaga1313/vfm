@@ -3,6 +3,7 @@ import torch.nn as nn
 from timm.models._registry import register_model
 import torchvision
 
+
 # Custom Model with ResNet50 Encoder and VAE Reparameterization
 class ResNet18VAEClassifier(nn.Module):
     def __init__(self, latent_dim=64, num_classes=10):
@@ -25,18 +26,27 @@ class ResNet18VAEClassifier(nn.Module):
 
         features = self.encoder(x)  # Extract features
         # Go through layers of ResNet50 and store outputs of the last 5 layers
-        for name, layer in list(self.encoder.named_children())[:-1]:  # Exclude the final FC layer
+        for name, layer in list(self.encoder.named_children())[
+            :-1
+        ]:  # Exclude the final FC layer
             x = layer(x)
             feature_maps.append(x)
-        
+
         # # Keep only the last 5 feature maps
         feature_maps = feature_maps[-4]
         features = self.compress(features)
         mu = self.fc_mu(features)  # Mean
         logvar = self.fc_logvar(features)  # Log variance
         z = self.reparameterize(mu, logvar)  # New latent vector
-        return feature_maps, self.fc_decision(z), mu, logvar  # Output logits and latent parameters
+        return (
+            feature_maps,
+            self.fc_decision(z),
+            mu,
+            logvar,
+        )  # Output logits and latent parameters
         # return self.fc_decision(z)
+
+
 # __all__ = []
 
 
@@ -44,9 +54,10 @@ class ResNet18VAEClassifier(nn.Module):
 # def resnet50vaeclassifier(pretrained=False, **kwargs):
 #     model = ResNet50VAEClassifier(n_classes=1)
 #     return model
-    
+
+
 class ResNet18VAERegressor(nn.Module):
-    def __init__(self, latent_dim=128, num_classes=10, inference = False, n_samples = 100):
+    def __init__(self, latent_dim=128, num_classes=10, inference=False, n_samples=100):
         super(ResNet18VAERegressor, self).__init__()
         # Load ResNet50 and remove fully connected layer
         self.encoder = torchvision.models.resnet.resnet18(weights=None)
@@ -61,7 +72,7 @@ class ResNet18VAERegressor(nn.Module):
             # nn.Linear(latent_dim // 2, latent_dim // 2),
             # nn.BatchNorm1d(latent_dim // 2),
             # nn.ReLU(),
-            nn.Linear(latent_dim // 2, 32)
+            nn.Linear(latent_dim // 2, 32),
         )  # Decision layer
         self.inference = inference
         self.n_samples = n_samples
@@ -72,15 +83,16 @@ class ResNet18VAERegressor(nn.Module):
         return mu + eps * std
 
     def forward(self, x):
-        
         feature_maps = []
         features = self.encoder(x)  # Extract features
         # Go through layers of ResNet50 and store outputs of the last 5 layers
         if not self.inference:
-            for name, layer in list(self.encoder.named_children())[:-1]:  # Exclude the final FC layer
+            for name, layer in list(self.encoder.named_children())[
+                :-1
+            ]:  # Exclude the final FC layer
                 x = layer(x)
                 feature_maps.append(x)
-            
+
             # # Keep only the last 5 feature maps
             feature_maps = feature_maps[-4]
         features = self.compress(features)
@@ -92,8 +104,13 @@ class ResNet18VAERegressor(nn.Module):
             for i in range(self.n_samples):
                 z = self.reparameterize(mu, logvar)  # New latent vector
                 trajectories.append(self.fc_decision(z).unsqueeze(0))
-            
+
             trajectories = torch.vstack(trajectories)
             return mu, logvar, trajectories
         else:
-            return feature_maps, self.fc_decision(z), mu, logvar  # Output logits and latent parameters
+            return (
+                feature_maps,
+                self.fc_decision(z),
+                mu,
+                logvar,
+            )  # Output logits and latent parameters

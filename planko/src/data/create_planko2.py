@@ -4,41 +4,50 @@ import torch
 from os import listdir, scandir
 from os.path import isfile, join
 from PIL import Image
+
 # import random
 import dgread
 import numpy as np
+
 # from tqdm import tqdm
 # import cv2
 # from transforms import transform
 
-def load_image(directory):
-    return Image.open(directory).convert('RGB')
 
-def distance(x1,y1,x2,y2):
-    return np.sqrt((x1-x2)**2 + (y1-y2)**2)
+def load_image(directory):
+    return Image.open(directory).convert("RGB")
+
+
+def distance(x1, y1, x2, y2):
+    return np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+
 
 def get_equi_points(world_desc):
-    x_positions = [world_desc['ball_pos_x'][0]]
-    y_positions = [world_desc['ball_pos_y'][0]]
-    for i in range(0,len(world_desc['ball_pos_y'])):
+    x_positions = [world_desc["ball_pos_x"][0]]
+    y_positions = [world_desc["ball_pos_y"][0]]
+    for i in range(0, len(world_desc["ball_pos_y"])):
         # if world_desc['ball_pos_y'][i] < -8.5:
         #   break
-        dist = distance(x_positions[-1], y_positions[-1], world_desc['ball_pos_x'][i], world_desc['ball_pos_y'][i])
+        dist = distance(
+            x_positions[-1],
+            y_positions[-1],
+            world_desc["ball_pos_x"][i],
+            world_desc["ball_pos_y"][i],
+        )
         if dist > 1:
-            x_positions.append(world_desc['ball_pos_x'][i])
-            y_positions.append(world_desc['ball_pos_y'][i])
-            #print(i)
+            x_positions.append(world_desc["ball_pos_x"][i])
+            y_positions.append(world_desc["ball_pos_y"][i])
+            # print(i)
     x_positions = np.array(x_positions)
     y_positions = np.array(y_positions)
 
     return x_positions, y_positions
 
 
-def get_equi_points_ART(world_desc, noise = False, noise_std = 0.05):
-
+def get_equi_points_ART(world_desc, noise=False, noise_std=0.05):
     xes = []
     yes = []
-    for (x,y) in zip(world_desc['ball_pos_x'], world_desc['ball_pos_y']):
+    for x, y in zip(world_desc["ball_pos_x"], world_desc["ball_pos_y"]):
         xes.append(x)
         yes.append(y)
         if y < -8.5:
@@ -47,25 +56,27 @@ def get_equi_points_ART(world_desc, noise = False, noise_std = 0.05):
     xes = np.array(xes)
     yes = np.array(yes)
 
-    total_dist = np.sum(np.sqrt((xes[1:] - xes[:-1])**2 + (yes[1:] - yes[:-1])**2))
+    total_dist = np.sum(np.sqrt((xes[1:] - xes[:-1]) ** 2 + (yes[1:] - yes[:-1]) ** 2))
     sep_distance = total_dist / 18
     x_positions = [xes[0]]
     y_positions = [yes[0]]
-    for i in range(0,len(yes)):
-        if world_desc['ball_pos_y'][i] < -8.5:
-          break
+    for i in range(0, len(yes)):
+        if world_desc["ball_pos_y"][i] < -8.5:
+            break
         dist = distance(x_positions[-1], y_positions[-1], xes[i], yes[i])
         if dist >= sep_distance:
-            noise_x, noise_y = (np.random.normal(0, noise_std), 
-                                np.random.normal(0, noise_std)) if noise else (0,0)
+            noise_x, noise_y = (
+                (np.random.normal(0, noise_std), np.random.normal(0, noise_std))
+                if noise
+                else (0, 0)
+            )
             x_positions.append(xes[i] + noise_x)
             y_positions.append(yes[i] + noise_y)
 
-
-    for i in range(0, 16-len(x_positions)):
+    for i in range(0, 16 - len(x_positions)):
         x_positions.append(x_positions[-1])
         y_positions.append(y_positions[-1])
-    
+
     x_positions = np.array(x_positions, dtype=np.float32)
     y_positions = np.array(y_positions, dtype=np.float32)
 
@@ -74,32 +85,43 @@ def get_equi_points_ART(world_desc, noise = False, noise_std = 0.05):
 
 class OrigPlank2(Dataset):
     def __init__(
-        self, path: ValueNode, train: bool, transform = None, noise = False, norm = False, **kwargs
+        self,
+        path: ValueNode,
+        train: bool,
+        transform=None,
+        noise=False,
+        norm=False,
+        **kwargs,
     ):
         super().__init__()
         # self.cfg = cfg
         self.path = path
         self.train = train
         self.transform = transform
-        self.ball_pos_idx = 16 #self.cfg.ball_pos_train_idx # number between 1 to 16
-        self.noise = noise 
+        self.ball_pos_idx = 16  # self.cfg.ball_pos_train_idx # number between 1 to 16
+        self.noise = noise
         self.norm = norm
         import time
+
         print("started loading")
         t0 = time.time()
-        #self.file_list = [join(self.path, f) for f in listdir(self.path) if isfile(join(self.path, f))]
+        # self.file_list = [join(self.path, f) for f in listdir(self.path) if isfile(join(self.path, f))]
         if isinstance(self.path, ListConfig):
             self.file_list = []
             for p in self.path:
-                self.file_list += [join(p, f) for f in scandir(p) if f.is_file()] #[:20000]
+                self.file_list += [
+                    join(p, f) for f in scandir(p) if f.is_file()
+                ]  # [:20000]
         else:
-            self.file_list = [join(self.path, f) for f in scandir(self.path) if f.is_file()]
+            self.file_list = [
+                join(self.path, f) for f in scandir(self.path) if f.is_file()
+            ]
         # if not self.train:
         #    self.file_list = sorted(self.file_list)
-        #print(self.file_list[:20])
+        # print(self.file_list[:20])
         t1 = time.time()
         print("finished loading in ")
-        print(t1-t0)
+        print(t1 - t0)
 
     def __len__(self) -> int:
         return len(self.file_list)
@@ -109,11 +131,16 @@ class OrigPlank2(Dataset):
         img = load_image(file_name)
         if self.transform:
             img = self.transform(img)
-        
-        label = [0 if "left" in file_name else 1][0]
-        #label = int(random.random() >0.5)
 
-        dgz_name = file_name.replace("train", "world").replace("test", "world").replace(".png", ".dgz").replace("png", "world")
+        label = [0 if "left" in file_name else 1][0]
+        # label = int(random.random() >0.5)
+
+        dgz_name = (
+            file_name.replace("train", "world")
+            .replace("test", "world")
+            .replace(".png", ".dgz")
+            .replace("png", "world")
+        )
         # print(dgz_name)
         # import pdb; pdb.set_trace()
         world_desc = dgread.dgread(dgz_name)
@@ -122,7 +149,7 @@ class OrigPlank2(Dataset):
 
         # x_positions, y_positions = get_equi_points(world_desc)
         x_positions, y_positions = get_equi_points_ART(world_desc, self.noise)
-        
+
         if self.norm:
             x_positions = np.array(x_positions)
             y_positions = np.array(y_positions)
@@ -131,8 +158,16 @@ class OrigPlank2(Dataset):
             x_min, x_max = np.min(x_positions), np.max(x_positions)
             y_min, y_max = np.min(y_positions), np.max(y_positions)
 
-            x_positions = (x_positions - x_min) / (x_max - x_min) if x_max != x_min else x_positions
-            y_positions = (y_positions - y_min) / (y_max - y_min) if y_max != y_min else y_positions
+            x_positions = (
+                (x_positions - x_min) / (x_max - x_min)
+                if x_max != x_min
+                else x_positions
+            )
+            y_positions = (
+                (y_positions - y_min) / (y_max - y_min)
+                if y_max != y_min
+                else y_positions
+            )
 
         # print(len(x_positions))
         # if len(x_positions) <= self.ball_pos_idx:
@@ -144,12 +179,20 @@ class OrigPlank2(Dataset):
         # x_pos = x_positions[self.ball_pos_idx]
         # y_pos = y_positions[self.ball_pos_idx]
         # import ipdb; ipdb.set_trace()
-        #[print(world_desc['ball_pos_x'][i], world_desc['ball_pos_y'][i]) for i in range(100)]
-        
+        # [print(world_desc['ball_pos_x'][i], world_desc['ball_pos_y'][i]) for i in range(100)]
+
         # if self.cfg.write_inference_to_file:
         #     return img, [torch.tensor([x_pos, y_pos]), file_name.split('/')[-1]]
 
-        board_coordinates = np.hstack([world_desc['tx'], world_desc['ty'], world_desc['sx'], world_desc['sy'], world_desc['spin']])
+        board_coordinates = np.hstack(
+            [
+                world_desc["tx"],
+                world_desc["ty"],
+                world_desc["sx"],
+                world_desc["sy"],
+                world_desc["spin"],
+            ]
+        )
 
         positions = []
         for i in range(16):
@@ -157,11 +200,11 @@ class OrigPlank2(Dataset):
             positions.append(y_positions[i])
         positions = np.array(positions)
 
-        
-        
         return img, label, torch.tensor(positions), torch.tensor(board_coordinates)
+
     def __repr__(self) -> str:
         return f"MyDataset({self.name}, {self.path})"
+
 
 # if __name__ == "__main__":
 #     train_dataset = OrigPlank2("/cifs/data/tserre_lrs/projects/projects/prj_vis_sim/plankdatasets/originalv1/train", train = False, transform = transform, noise = True)
@@ -176,6 +219,3 @@ class OrigPlank2(Dataset):
 #         #     cv2.imwrite(f"../../trash/{i}.png", cv2.cvtColor(img[i].permute(1,2,0).numpy()*255, cv2.COLOR_RGB2BGR))
 #         #     print('image_saved')
 #         # import ipdb;ipdb.set_trace()
-
-    
-    
