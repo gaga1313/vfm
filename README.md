@@ -74,7 +74,7 @@ pip install -r requirements.txt
 Ensure your GPUs are correctly set up and launch training with:
 
 ```bash
-pyython -m torch.distributed.run --nproc_per_node=<num_gpus> train.py
+python3 -m torch.distributed.run --nproc_per_node=<num_gpus> train.py
 ```
 
 
