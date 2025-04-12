@@ -54,7 +54,7 @@ pip install -r requirements.txt
 
    ```bash
    git clone https://github.com/gaga1313/vfm.git
-   cd visual-foundation-model
+   cd vfm/planko
    ```
 
 2. **Set up your dataset**
