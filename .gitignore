@@ -7,8 +7,8 @@
 /planko/trash/
 /planko/metadata
 
-/imagenet/pretrained_models/
-/imagenet/metadata/
-/imagenet/attributions/
+/linear_proble/pretrained_models/
+/linear_proble/metadata/
+/linear_proble/attributions/
 
 /timmhrgu/
